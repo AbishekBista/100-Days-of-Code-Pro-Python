@@ -17,10 +17,7 @@ guessed_states = []
 while len(guessed_states) < 50:
     guess = turtle.textinput(title=f"{len(guessed_states)}/50 States Correct", prompt="What's another state name").title()
     if guess == "Exit":
-        missed_states = []
-        for state in states_data.state.to_list():
-            if state not in guessed_states:
-                missed_states.append(state)
+        missed_states = [state for state in states_data.state.to_list() if state not in guessed_states]
 
         state_dict = {
             'Missed States': missed_states
