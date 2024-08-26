@@ -1,0 +1,10 @@
+facebook.com | mario@gmail.com | 123456
+hello.com | mario@gmail.com | 123458
+mario.com | mario@gmail.com | 456789
+hoyt@gmail.com | mario@gmail.com | 456789
+ | mario@gmail.com | 
+Amazon | mario@gmail.com | helloworld123
+gulu | mario@gmail.com | gulugulu
+hh | mario@gmail.com | hoho
+Amazon | mario@gmail.com | 5x1y#K6WINgthx9*
+heroku | mario@gmail.com | 8oO9%CfzgY5CY*!V
