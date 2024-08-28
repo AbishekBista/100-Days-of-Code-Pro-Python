@@ -6,7 +6,7 @@ BACKGROUND_COLOR = "#B1DDC6"
 
 try:
     french_words = pandas.read_csv('data/words_to_learn.csv')
-    print('Words to learn loaded');
+    print('Words to learn loaded')
 except FileNotFoundError:
     print('File not found, reading from french_words')
     french_words = pandas.read_csv('data/french_words.csv')
