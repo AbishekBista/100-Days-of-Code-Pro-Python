@@ -1,6 +1,6 @@
 from pprint import pprint
 import requests
-from secret import SHEETY_ENDPOINT
+from secret import SHEETY_ENDPOINT, SHEET_ENDPOINT_CUSTOMER
 
 
 
@@ -24,3 +24,10 @@ class DataManager:
             }
             response = requests.put(url=f"{SHEETY_ENDPOINT}/{city['id']}", json=new_data)
             print(response.text)
+    
+    def get_customer_email(self):
+        customer_endpoint = SHEET_ENDPOINT_CUSTOMER
+        response = requests.get(customer_endpoint)
+        data = response.json()
+        self.customer_data = data["users"]
+        return self.customer_data
