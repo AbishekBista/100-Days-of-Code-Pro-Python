@@ -19,30 +19,33 @@ game_data_list = []
 
 page_numbers = int(driver.find_element(By.CSS_SELECTOR, ".pagination.loop-pagination a:nth-last-child(2)").text)
 
-for i in range(1, page_numbers + 1):
+for i in range(1, 449):
     driver.get(f"https://fitgirl-repacks.site/page/{i}/")
     print(f"Current page: {i}")
     article_post = driver.find_elements(By.CLASS_NAME, 'category-lossless-repack')
     for index, article in enumerate(article_post):
-        # find title, date, comments, genre, companies, language, original size, repack size, description
-        title = article.find_element(By.CSS_SELECTOR, ".entry-header h1 > a").text
-        print(title)
-        date = article.find_element(By.CSS_SELECTOR, ".entry-header .entry-meta .entry-date a").text
-        comments = article.find_element(By.CSS_SELECTOR, ".entry-header .entry-meta .comments-link a").text
-        companies = article.find_element(By.CSS_SELECTOR, ".entry-content p strong:nth-of-type(2)").text
-        languages = article.find_element(By.CSS_SELECTOR, ".entry-content p strong:nth-of-type(3)").text
-        original_size = article.find_element(By.CSS_SELECTOR, ".entry-content p strong:nth-last-of-type(2)").text
-        repack_size = article.find_element(By.CSS_SELECTOR, ".entry-content p strong:nth-last-of-type(1)").text
-
-        game_data_list.append({
-            'title': title,
-            'date': date,
-            'comments': int(comments.split(" ")[0]),
-            "companies": companies,
-            "languages": languages,
-            "original_size": original_size,
-            "repack_size": repack_size,
-        })
+        try:
+            # find title, date, comments, genre, companies, language, original size, repack size, description
+            title = article.find_element(By.CSS_SELECTOR, ".entry-header h1 > a").text
+            print(title)
+            date = article.find_element(By.CSS_SELECTOR, ".entry-header .entry-meta .entry-date a").text
+            comments = article.find_element(By.CSS_SELECTOR, ".entry-header .entry-meta .comments-link a").text
+            companies = article.find_element(By.CSS_SELECTOR, ".entry-content p strong:nth-of-type(2)").text
+            original_size = article.find_element(By.CSS_SELECTOR, ".entry-content p strong:nth-last-of-type(2)").text
+            repack_size = article.find_element(By.CSS_SELECTOR, ".entry-content p strong:nth-last-of-type(1)").text
+        except:
+            print("Error reading fields")
+            continue
+        else:
+            game_data_list.append({
+                'title': title,
+                'date': date,
+                'comments': int(comments.split(" ")[0]),
+                "companies": companies,
+                "languages": languages,
+                "original_size": original_size,
+                "repack_size": repack_size,
+            })
 
 df = pandas.DataFrame(game_data_list)
 df.to_csv('game_data.csv')
