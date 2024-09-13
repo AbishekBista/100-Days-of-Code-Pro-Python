@@ -46,7 +46,7 @@ class InstaFollower:
         follower_button.click()
         time.sleep(3)
 
-        for i in range(8): # follow max 160 people ( 8 x 20 = 160), Instagram has a limit of 150 new follow requests per day
+        for i in range(20): # follow max 160 people ( 8 x 20 = 160), Instagram has a limit of 150 new follow requests per day
             print(i)
             self.follow_buttons = self.driver.find_elements(By.CSS_SELECTOR, "div[role='dialog'] button[type='button'] div[style='height: 100%;']")
             print(f'Follower button found: {len(self.follow_buttons)}')
