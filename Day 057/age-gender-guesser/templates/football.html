@@ -1,0 +1,14 @@
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Football Facts</title>
+  </head>
+  <body>
+    {% for fact in all_facts: %} {% if fact['id'] == 2: %}
+    <h1>{{ fact['title'] }}</h1>
+    <h2>{{ fact['subtitle'] }}</h2>
+    <p>{{ fact['body'] }}</p>
+    {% endif %} {% endfor %}
+  </body>
+</html>
