@@ -1,3 +1,4 @@
+{% import 'bootstrap/wtf.html' as wtf %}
 <link rel="stylesheet" href="static/css/styles.css" />
 {% extends 'bootstrap/base.html' %} {% block title %}Add A New Cafe{% endblock
 %} {% block content %}
@@ -6,7 +7,8 @@
     <div class="col-sm-12 col-md-8">
       <h1>Add a new cafe into the database</h1>
       <form method="POST" action="{{ url_for('add_cafe') }}" novalidate>
-        {{ form.csrf_token }}
+        {{ wtf.quick_form(form) }}
+        <!-- {{ form.csrf_token }}
 
         <p>
           {{form.cafe.label }}<br />
@@ -58,7 +60,7 @@
           {% endfor %}
         </p>
 
-        <p>{{ form.submit }}</p>
+        <p>{{ form.submit }}</p> -->
       </form>
 
       <p class="space-above">
