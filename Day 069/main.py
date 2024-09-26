@@ -1,4 +1,4 @@
-from flask import Flask, render_template, redirect, url_for, flash
+from flask import Flask, render_template, redirect, url_for, flash, request, abort
 from flask_bootstrap import Bootstrap
 from flask_ckeditor import CKEditor
 from datetime import date
@@ -11,6 +11,10 @@ from forms import CreatePostForm
 from sqlalchemy.orm import DeclarativeBase
 from wtforms import StringField, PasswordField, SubmitField
 from wtforms.validators import DataRequired
+from functools import wraps
+from sqlalchemy import ForeignKey
+
+login_manager = LoginManager()
 
 class Base(DeclarativeBase):
     pass
@@ -20,23 +24,49 @@ app.config['SECRET_KEY'] = '8BYkEfBA6O6donzWlSihBXox7C0sKR6b'
 ckeditor = CKEditor(app)
 Bootstrap(app)
 
+
+
 ##CONNECT TO DB
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///blog.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(model_class=Base)
 
 db.init_app(app)
+login_manager.init_app(app)
 
-with app.app_context():
-    db.create_all()
+def admin_only(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if current_user.id != 1:
+            return abort(403)
+        
+        return f(*args, **kwargs)
+    return decorated_function
+
+
+
+
+class User(UserMixin, db.Model):
+    id = db.Column(db.Integer, primary_key = True)
+    email = db.Column(db.String(100), nullable = False)
+    name = db.Column(db.String(100), nullable = False)
+    password = db.Column(db.String(100), nullable = False)
+    posts = relationship('BlogPost', back_populates="author")
 
 class RegisterForm(FlaskForm):
-    email = StringField(label='email', validators=[DataRequired()])
-    password = PasswordField(label='password', validators=[DataRequired()])
-    name = StringField(label='name', validators=[DataRequired()])
+    email = StringField(label='Email', validators=[DataRequired()])
+    password = PasswordField(label='Password', validators=[DataRequired()])
+    name = StringField(label='Name', validators=[DataRequired()])
+    submit = SubmitField(label='SIGN ME UP!')
+
+class LoginForm(FlaskForm):
+    email = StringField(label='Email', validators=[DataRequired()])
+    password = PasswordField(label='Password', validators=[DataRequired()])
+    submit = SubmitField(label='LET ME IN!')
 
 
 ##CONFIGURE TABLES
+
 
 class BlogPost(db.Model):
     __tablename__ = "blog_posts"
@@ -47,35 +77,83 @@ class BlogPost(db.Model):
     date = db.Column(db.String(250), nullable=False)
     body = db.Column(db.Text, nullable=False)
     img_url = db.Column(db.String(250), nullable=False)
+    author_id = db.Column(db.Integer, ForeignKey('users.id'))
+    user = relationship("User", back_populates="users")
 
+
+with app.app_context():
+    db.create_all()
+
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
 
 
 @app.route('/')
 def get_all_posts():
     posts = BlogPost.query.all()
-    return render_template("index.html", all_posts=posts)
+    print(f'user_id {current_user.get_id()}')
+    print(type(current_user.get_id()))
+    return render_template("index.html", all_posts=posts, logged_in=current_user.is_authenticated, user_id=int(current_user.get_id()))
 
 
-@app.route('/register')
+@app.route('/register', methods=['POST', 'GET'])
 def register():
     form=RegisterForm()
+    if form.validate_on_submit():
+        if User.query.filter_by(email=request.form['email']).first():
+            flash('User already exists')
+            return redirect('/login')
+            
+        else:
+            new_user = User(email=request.form['email'],
+                            name=request.form['name'],
+                            password=generate_password_hash(request.form['password'], method='pbkdf2:sha256', salt_length=8),
+                        )
+            with app.app_context():
+                db.session.add(new_user)
+                db.session.commit()
+                login_user(new_user)
+                return redirect(url_for('get_all_posts'))
+
+    
     return render_template("register.html", form=form)
 
 
-@app.route('/login')
+@app.route('/login', methods=['GET', 'POST'])
 def login():
-    return render_template("login.html")
+    form = LoginForm()
+    if form.validate_on_submit():
+        email = request.form['email']
+        password = request.form['password']
+        print(email, password)
+        with app.app_context():
+            email_found = User.query.filter_by(email=email).first()
+            if email_found:
+                if(check_password_hash(email_found.password, password)):
+                    print("Logging in user")
+                    login_user(email_found)
+                    return redirect(url_for('get_all_posts'))
+                else:
+                    flash("The password is incorrect")
+                    
+            else:
+                flash("The email doesn't exist.")
+
+    return render_template("login.html", form=form)
 
 
 @app.route('/logout')
 def logout():
-    return redirect(url_for('get_all_posts'))
+    logout_user()
+    return redirect(url_for('login'))
 
 
 @app.route("/post/<int:post_id>")
 def show_post(post_id):
     requested_post = BlogPost.query.get(post_id)
-    return render_template("post.html", post=requested_post)
+    print(current_user.get_id())
+    return render_template("post.html", post=requested_post, user_id=int(current_user.get_id()))
 
 
 @app.route("/about")
@@ -87,8 +165,8 @@ def about():
 def contact():
     return render_template("contact.html")
 
-
 @app.route("/new-post")
+@admin_only
 def add_new_post():
     form = CreatePostForm()
     if form.validate_on_submit():
@@ -105,8 +183,8 @@ def add_new_post():
         return redirect(url_for("get_all_posts"))
     return render_template("make-post.html", form=form)
 
-
 @app.route("/edit-post/<int:post_id>")
+@admin_only
 def edit_post(post_id):
     post = BlogPost.query.get(post_id)
     edit_form = CreatePostForm(
@@ -127,8 +205,8 @@ def edit_post(post_id):
 
     return render_template("make-post.html", form=edit_form)
 
-
 @app.route("/delete/<int:post_id>")
+@admin_only
 def delete_post(post_id):
     post_to_delete = BlogPost.query.get(post_id)
     db.session.delete(post_to_delete)
@@ -137,4 +215,4 @@ def delete_post(post_id):
 
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host='0.0.0.0', port=5000, debug=True)
