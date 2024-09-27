@@ -7,12 +7,12 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import relationship
 from flask_login import UserMixin, login_user, LoginManager, login_required, current_user, logout_user
-from forms import CreatePostForm
+from forms import CreatePostForm, CommentForm
 from sqlalchemy.orm import DeclarativeBase
 from wtforms import StringField, PasswordField, SubmitField
 from wtforms.validators import DataRequired
 from functools import wraps
-from sqlalchemy import ForeignKey
+from flask_gravatar import Gravatar
 
 login_manager = LoginManager()
 
@@ -43,15 +43,54 @@ def admin_only(f):
         return f(*args, **kwargs)
     return decorated_function
 
-
+# gravatar = Gravatar(
+#     app,
+#     size=100,
+#     rating='g',
+#     default='retro',
+#     force_default=False,
+#     force_lower=False,
+#     use_ssl=False,
+#     base_url=None,
+# )
 
 
 class User(UserMixin, db.Model):
+    __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key = True)
-    email = db.Column(db.String(100), nullable = False)
-    name = db.Column(db.String(100), nullable = False)
-    password = db.Column(db.String(100), nullable = False)
+    email = db.Column(db.String(100), unique = True)
+    name = db.Column(db.String(100))
+    password = db.Column(db.String(100))
     posts = relationship('BlogPost', back_populates="author")
+    comments = relationship('Comment', back_populates='comment_author')
+
+class BlogPost(db.Model):
+    __tablename__ = "blog_posts"
+    id = db.Column(db.Integer, primary_key=True)
+
+    author_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    author = relationship("User", back_populates="posts")
+
+    title = db.Column(db.String(250), unique=True, nullable=False)
+    subtitle = db.Column(db.String(250), nullable=False)
+    date = db.Column(db.String(250), nullable=False)
+    body = db.Column(db.Text, nullable=False)
+    img_url = db.Column(db.String(250), nullable=False)
+
+    comments = relationship('Comment', back_populates='parent_post')
+    
+class Comment(db.Model):
+    __tablename__ = "comments"
+    id = db.Column(db.Integer, primary_key=True)
+    text = db.Column(db.String(250), nullable=False)
+    author_id = db.Column(db.Integer, db.ForeignKey("users.id"))
+    comment_author = relationship("User", back_populates="comments")
+
+    post_id = db.Column(db.Integer, db.ForeignKey('blog_posts.id'))
+    parent_post = relationship('BlogPost', back_populates='comments')
+
+
+
 
 class RegisterForm(FlaskForm):
     email = StringField(label='Email', validators=[DataRequired()])
@@ -64,25 +103,17 @@ class LoginForm(FlaskForm):
     password = PasswordField(label='Password', validators=[DataRequired()])
     submit = SubmitField(label='LET ME IN!')
 
+with app.app_context():
+    db.create_all()
+
 
 ##CONFIGURE TABLES
 
 
-class BlogPost(db.Model):
-    __tablename__ = "blog_posts"
-    id = db.Column(db.Integer, primary_key=True)
-    author = db.Column(db.String(250), nullable=False)
-    title = db.Column(db.String(250), unique=True, nullable=False)
-    subtitle = db.Column(db.String(250), nullable=False)
-    date = db.Column(db.String(250), nullable=False)
-    body = db.Column(db.Text, nullable=False)
-    img_url = db.Column(db.String(250), nullable=False)
-    author_id = db.Column(db.Integer, ForeignKey('users.id'))
-    user = relationship("User", back_populates="users")
 
 
-with app.app_context():
-    db.create_all()
+
+
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -149,11 +180,27 @@ def logout():
     return redirect(url_for('login'))
 
 
-@app.route("/post/<int:post_id>")
+@app.route("/post/<int:post_id>", methods=['GET', 'POST'])
+@login_required
 def show_post(post_id):
     requested_post = BlogPost.query.get(post_id)
-    print(current_user.get_id())
-    return render_template("post.html", post=requested_post, user_id=int(current_user.get_id()))
+    all_comments = Comment.query.filter_by(post_id=post_id)
+    form = CommentForm()
+    if form.validate_on_submit():
+        if not current_user.is_authenticated:
+            flash("You need to login or register to comment.")
+            return redirect(url_for("login"))
+        
+        comment = request.form['comment']
+        new_comment = Comment(
+            text = comment,
+            comment_author=current_user,
+            parent_post=requested_post
+        )
+        db.session.add(new_comment)
+        db.session.commit()       
+
+    return render_template("post.html", all_comments=all_comments, form=form, post=requested_post, user_id=int(current_user.get_id()))
 
 
 @app.route("/about")
@@ -165,7 +212,7 @@ def about():
 def contact():
     return render_template("contact.html")
 
-@app.route("/new-post")
+@app.route("/new-post", methods=['GET', 'POST'])
 @admin_only
 def add_new_post():
     form = CreatePostForm()
