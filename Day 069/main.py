@@ -12,7 +12,6 @@ from sqlalchemy.orm import DeclarativeBase
 from wtforms import StringField, PasswordField, SubmitField
 from wtforms.validators import DataRequired
 from functools import wraps
-from flask_gravatar import Gravatar
 
 login_manager = LoginManager()
 
