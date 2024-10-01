@@ -42,7 +42,7 @@ def admin_only(f):
         return f(*args, **kwargs)
     return decorated_function
 
-# #gravatar = Gravatar(
+# #$gravatar = Gravatar(
 #     app,
 #     size=100,
 #     rating='g',
